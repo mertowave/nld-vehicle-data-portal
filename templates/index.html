@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Set Filters</h2>
+    <form method="get" class="grid">
+      <input type="hidden" name="submitted" value="1">
+      <div>
+        <label for="category">Vehicle Category</label>
+        <select id="category" name="category">
+          <option value="">All</option>
+          {% for item in categories %}
+            <option value="{{ item }}" {% if item == category %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+        <div>
+          <label for="license_plate">License Plate</label>
+          <input id="license_plate" name="license_plate" value="{{ license_plate }}" placeholder="e.g.: 5KKZ20">
+        </div>
+        <div>
+          <label for="brand">Brand</label>
+          <input id="brand" name="brand" value="{{ brand }}" placeholder="e.g.: OPEL, BMW, TOYOTA">
+        </div>
+        {% if models %}
+        <div>
+          <label for="model">Model</label>
+          <select id="model" name="model">
+            <option value="">All Models</option>
+            {% for model_option in models %}
+              <option value="{{ model_option }}" {% if model_option == model %}selected{% endif %}>{{ model_option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+      <div>
+        <label for="limit">Record Limit</label>
+        <input id="limit" name="limit" type="number" min="1" max="{{ max_limit }}" value="{{ limit }}">
+      </div>
+      <div>
+        <label for="timeout">Timeout (seconds)</label>
+        <input id="timeout" name="timeout" type="number" min="5" max="120" value="{{ request.args.timeout or 30 }}">
+      </div>
+      <div>
+        <label for="date_from">Registration Date From</label>
+        <input id="date_from" name="date_from" type="date" value="{{ request.args.date_from or '' }}">
+      </div>
+      <div>
+        <label for="date_to">Registration Date To</label>
+        <input id="date_to" name="date_to" type="date" value="{{ request.args.date_to or '' }}">
+      </div>
+      <div class="actions">
+        <button type="submit">Fetch Data</button>
+        <button type="button" onclick="window.location='{{ url_for('index') }}'">Clear Filters</button>
+        {% if records %}
+          <button type="button" onclick="window.location='{{ url_for('download_csv', category=category, license_plate=license_plate, brand=brand, model=model, limit=limit, timeout=request.args.timeout or 30, date_from=request.args.date_from or '', date_to=request.args.date_to or '') }}'">Download CSV</button>
+        {% endif %}
+      </div>
+    </form>
+    <p class="meta">Retrieved data is displayed with English column names. You can increase the limit to see more data (upper limit {{ max_limit|default(10000) }}).</p>
+  </div>
+
+  {% if error %}
+    <div class="card">
+      <strong>Error:</strong> {{ error }}
+    </div>
+  {% endif %}
+
+      {% if records %}
+        <div class="card">
+          <h2>{% if searched %}Results{% else %}Recent Vehicle Records{% endif %}</h2>
+          {% if records %}
+            <p class="meta">Displaying {{ total }} records total.{% if not searched %} <em>Use filters above to search for specific vehicles.</em>{% endif %}</p>
+        {% set visible_columns = [
+          "license_plate",
+          "vehicle_type",
+          "make",
+          "commercial_name",
+          "registration_date",
+          "inspection_expiry_date",
+          "first_admission_date",
+          "liability_insured"
+        ] %}
+        {% set column_labels = {
+          "license_plate": "License Plate",
+          "vehicle_type": "Vehicle Type",
+          "make": "Brand",
+          "commercial_name": "Model",
+          "registration_date": "Registration Date",
+          "inspection_expiry_date": "Inspection Expiry",
+          "first_admission_date": "First Registration",
+          "liability_insured": "Insurance"
+        } %}
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                {% for col in visible_columns %}
+                  <th>{{ column_labels[col] }}</th>
+                {% endfor %}
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in records %}
+                <tr>
+                  {% for col in visible_columns %}
+                    <td>{{ row.get(col, '') }}</td>
+                  {% endfor %}
+                  <td>
+                    <details>
+                      <summary>Show all fields</summary>
+                      <dl>
+                        {% for english, turkish in column_map.items() %}
+                          {% set value = row.get(english) %}
+                          {% if value is not none and value != '' %}
+                            {% set display_name = 'brand' if english == 'make' else english %}
+                            <dt><strong>{{ display_name }}</strong> <small>({{ turkish }})</small></dt>
+                            <dd>{{ value }}</dd>
+                          {% endif %}
+                        {% endfor %}
+                      </dl>
+                    </details>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p>No data found. Try again with different filters.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>Column Dictionary</h2>
+    <p>All English column names and their Turkish equivalents:</p>
+    <div class="table-wrapper" style="max-height: 320px;">
+      <table>
+        <thead>
+          <tr>
+            <th>English</th>
+            <th>Turkish</th>
+          </tr>
+        </thead>
+        <tbody>
+              {% for english, turkish in column_map.items() %}
+                {% set display_name = 'brand' if english == 'make' else english %}
+                <tr>
+                  <td>{{ display_name }}</td>
+                  <td>{{ turkish }}</td>
+                </tr>
+              {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

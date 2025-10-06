@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>The Netherlands Vehicle Information Portal</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #222; }
+      header { background: #003082; color: #fff; padding: 1rem 2rem; }
+      main { padding: 2rem; }
+      h1 { margin: 0; display: flex; align-items: center; gap: 1rem; }
+      .flag { width: 40px; height: 30px; border: 1px solid #ccc; }
+      .container { max-width: 1200px; margin: 0 auto; }
+      .card { background: #fff; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
+      input, select { width: 100%; padding: 0.5rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 4px; }
+      button { background: #003082; color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer; }
+      button:hover { background: #001b4f; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; font-size: 0.85rem; }
+      th { background: #003082; color: #fff; position: sticky; top: 0; }
+      tbody tr:nth-child(even) { background: #f9f9f9; }
+      .flash { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
+      .flash-success { background: #d1e7dd; color: #0f5132; }
+      .flash-warning { background: #fff3cd; color: #664d03; }
+      .flash-danger { background: #f8d7da; color: #842029; }
+      .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+      .actions a { text-decoration: none; }
+      .meta { color: #555; font-size: 0.9rem; margin-bottom: 1rem; }
+      .table-wrapper { max-height: 480px; overflow: auto; border: 1px solid #ddd; border-radius: 6px; }
+      footer { padding: 1rem 2rem; font-size: 0.85rem; color: #555; }
+      code { background: #eee; padding: 0.1rem 0.25rem; border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>
+          <div class="flag" style="background: linear-gradient(to bottom, #AE1C28 33%, #FFFFFF 33%, #FFFFFF 66%, #21468B 66%);"></div>
+          The Netherlands Vehicle Information Portal
+        </h1>
+        {% if total_plates and total_plates > 0 %}
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">
+          📊 Total vehicles in database: <strong id="total-count">{{ "{:,}".format(total_plates) }}</strong>
+          <span id="last-updated" style="font-size: 0.8rem; opacity: 0.7; margin-left: 1rem;"></span>
+        </p>
+        {% endif %}
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+    <footer>
+      <div class="container">
+        RDW data is retrieved live from <code>https://opendata.rdw.nl</code> API. No demo data.<br>
+        Owner: mertowave
+      </div>
+    </footer>
+    
+    <script>
+      // Auto-refresh total count every minute
+      function updateTotalCount() {
+        fetch('/api/total-count')
+          .then(response => response.json())
+          .then(data => {
+            if (data.total_plates) {
+              document.getElementById('total-count').textContent = data.total_plates.toLocaleString();
+              document.getElementById('last-updated').textContent = '(Updated: ' + new Date().toLocaleTimeString() + ')';
+            }
+          })
+          .catch(error => {
+            console.log('Failed to update count:', error);
+          });
+      }
+      
+      // Update immediately on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        // Set initial update time
+        document.getElementById('last-updated').textContent = '(Updated: ' + new Date().toLocaleTimeString() + ')';
+        
+        // Update every minute (60000 ms)
+        setInterval(updateTotalCount, 60000);
+      });
+    </script>
+  </body>
+</html>
